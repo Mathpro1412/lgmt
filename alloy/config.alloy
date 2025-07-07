@@ -30,31 +30,15 @@ prometheus.remote_write "demo" {
 // #### Logging Configuration ####
 // ###############################
 
-// Discover Docker containers and extract metadata.
-discovery.docker "linux" {
-  host = "unix:///var/run/docker.sock"
+local.file_match "local_files" {
+    path_targets = [{"__path__" = "/temp/logs/*.log", "job" = "app", "hostname" = constants.hostname}]
+    sync_period  = "5s"
 }
-
-// Define a relabeling rule to create a service name from the container name.
-discovery.relabel "logs_integrations_docker" {
-      targets = []
-  
-      rule {
-          source_labels = ["__meta_docker_container_name"]
-          regex = "/(.*)"
-          target_label = "service_name"
-      }
-
-  }
-
-
-// Configure a loki.source.docker component to collect logs from Docker containers.
-loki.source.docker "default" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.docker.linux.targets
-  labels     = {"platform" = "docker"}
-  relabel_rules = discovery.relabel.logs_integrations_docker.rules
-  forward_to = [loki.write.local.receiver]
+ 
+loki.source.file "log_scrape" {
+    targets    = local.file_match.local_files.targets
+    forward_to = [loki.write.local.receiver]
+    tail_from_end = true
 }
 
 loki.write "local" {

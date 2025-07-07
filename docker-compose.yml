@@ -1,5 +1,15 @@
 version: '3'
 services:
+  nodejs-app:
+    build: ./app
+    container_name: nodejs-app
+    restart: unless-stopped
+    volumes:
+      - ./app/logs:/usr/src/app/logs
+    ports:
+      - "3333:3333"
+    depends_on:
+      - alloy
   loki:
     image: grafana/loki:${GRAFANA_LOKI_VERSION:-3.5.0}
     ports:
@@ -58,5 +68,5 @@ services:
      - 4318:4318
    volumes:
      - ./alloy/config.alloy:/etc/alloy/config.alloy
-     - /var/run/docker.sock:/var/run/docker.sock
+     - ./app/logs:/temp/logs
    command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
