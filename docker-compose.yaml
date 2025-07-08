@@ -1,22 +1,51 @@
 services:
-  prometheus:
-    image: prom/prometheus
-    container_name: prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    ports:
-      - 9090:9090
-    restart: unless-stopped
-    volumes:
-      - ./prometheus:/etc/prometheus
-      - prom_data:/prometheus
   grafana:
-    image: grafana/grafana-oss
+    image: grafana/grafana:11.6.1
     container_name: grafana
     restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
     ports:
       - '3000:3000'
     volumes:
-      - ./grafana:/etc/grafana/provisioning/datasources
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - mimir_net
+    depends_on:
+      - alloy
+      - mimir
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    ports:
+      - '12345:12345'
+    volumes:
+      - ./alloy:/etc/alloy
+    networks:
+      - mimir_net
+
+  mimir:
+    image: grafana/mimir:latest
+    container_name: mimir
+    command:
+      - "-target=all"
+      - "--config.file=/etc/mimir.yaml"
+    ports:
+      - '9009:9009'
+    networks:
+      - mimir_net
+    volumes:
+      - ./mimir/mimir.yaml:/etc/mimir.yaml
+
 volumes:
-  prom_data: 
+  grafana-storage:
+
+networks:
+  mimir_net:
